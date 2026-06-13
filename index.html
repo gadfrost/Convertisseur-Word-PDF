@@ -15,6 +15,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
 </head>
 <body>
     <div class="background-blobs">
@@ -44,10 +46,11 @@
             </nav>
 
             <div class="content-section">
+                
                 <div id="drop-zone" class="drop-zone">
                     <div class="drop-zone-content">
                         <i id="file-icon" class="fas fa-cloud-upload-alt"></i>
-                        <p id="drop-text">Glissez-déposez votre fichier ici ou <span>cliquez pour parcourir</span></p>
+                        <p id="drop-text">Glissez-deposez votre fichier ici ou <span>cliquez pour parcourir</span></p>
                         <p class="file-info" id="file-info-text">Fichiers acceptés : .docx</p>
                     </div>
                     <input type="file" id="file-input" hidden accept=".docx">
@@ -77,6 +80,7 @@
                         <button id="reset-btn" class="secondary-btn">Convertir un autre fichier</button>
                     </div>
                 </div>
+
             </div>
         </div>
 
