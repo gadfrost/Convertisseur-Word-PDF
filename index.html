@@ -8,16 +8,12 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4a90e2">
     
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Bibliothèques CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://unpkg.com/docx@8.2.3/build/index.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
 <body>
@@ -50,16 +46,16 @@
             <div class="content-section">
                 <div id="drop-zone" class="drop-zone">
                     <div class="drop-zone-content">
-                        <i class="fas fa-cloud-upload-alt"></i>
+                        <i id="file-icon" class="fas fa-cloud-upload-alt"></i>
                         <p id="drop-text">Glissez-déposez votre fichier ici ou <span>cliquez pour parcourir</span></p>
                         <p class="file-info" id="file-info-text">Fichiers acceptés : .docx</p>
                     </div>
-                    <input type="file" id="file-input" hidden>
+                    <input type="file" id="file-input" hidden accept=".docx">
                 </div>
 
                 <div id="process-section" class="process-section hidden">
                     <div class="file-preview">
-                        <i id="file-icon" class="fas fa-file-word"></i>
+                        <i class="fas fa-file-alt"></i>
                         <span id="file-name">nom-du-fichier.docx</span>
                     </div>
                     
@@ -72,9 +68,9 @@
                     
                     <div id="download-section" class="hidden">
                         <div class="success-icon">
-                            <i class="fas fa-check-circle"></i>
+                            <i class="fas fa-check-circle" style="color: #10b981; font-size: 2.5rem; margin-bottom: 10px;"></i>
                         </div>
-                        <p>Conversion terminée avec succès !</p>
+                        <p style="font-weight: 600; margin-bottom: 15px;">Conversion terminée avec succès !</p>
                         <button id="download-btn" class="download-btn">
                             <i class="fas fa-download"></i> Télécharger le fichier
                         </button>
