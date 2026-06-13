@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convertisseur Universel Word & PDF</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Bibliothèques CDN -->
+    <!-- Mammoth.js pour Word vers HTML -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <!-- html2pdf.js pour HTML vers PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- pdf.js pour extraire le texte des PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- docx.js pour générer des fichiers .docx -->
+    <script src="https://unpkg.com/docx@8.2.3/build/index.js"></script>
+    <!-- FileSaver.js pour faciliter le téléchargement -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+<body>
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <main class="container">
+        <header>
+            <h1><i class="fas fa-sync-alt"></i> Convertisseur Universel</h1>
+            <p>Word & PDF - 100% Gratuit & Sécurisé</p>
+        </header>
+
+        <div class="glass-card">
+            <nav class="tabs">
+                <button class="tab-btn active" id="btn-word-to-pdf" data-mode="word-to-pdf">
+                    <i class="fas fa-file-word"></i> Word ➡️ PDF
+                </button>
+                <button class="tab-btn" id="btn-pdf-to-word" data-mode="pdf-to-word">
+                    <i class="fas fa-file-pdf"></i> PDF ➡️ Word
+                </button>
+            </nav>
+
+            <div class="content-section">
+                <div id="drop-zone" class="drop-zone">
+                    <div class="drop-zone-content">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p id="drop-text">Glissez-déposez votre fichier ici ou <span>cliquez pour parcourir</span></p>
+                        <p class="file-info" id="file-info-text">Fichiers acceptés : .docx</p>
+                    </div>
+                    <input type="file" id="file-input" hidden>
+                </div>
+
+                <div id="process-section" class="process-section hidden">
+                    <div class="file-preview">
+                        <i id="file-icon" class="fas fa-file-word"></i>
+                        <span id="file-name">nom-du-fichier.docx</span>
+                    </div>
+                    
+                    <div class="progress-container">
+                        <div class="progress-bar" id="progress-bar"></div>
+                    </div>
+                    <p id="status-text">Prêt pour la conversion...</p>
+
+                    <button id="convert-btn" class="primary-btn">Convertir maintenant</button>
+                    
+                    <div id="download-section" class="hidden">
+                        <div class="success-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <p>Conversion terminée avec succès !</p>
+                        <button id="download-btn" class="download-btn">
+                            <i class="fas fa-download"></i> Télécharger le fichier
+                        </button>
+                        <button id="reset-btn" class="secondary-btn">Convertir un autre fichier</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>&copy; 2026 - Outil 100% Client-Side (Confidentialité garantie)</p>
+        </footer>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

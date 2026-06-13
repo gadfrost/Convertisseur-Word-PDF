@@ -1,0 +1,335 @@
+:root {
+    --primary-color: #4a90e2;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --error-color: #dc3545;
+    --text-color: #333;
+    --bg-light: #f8f9fa;
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.3);
+    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #e0e5ec;
+    color: var(--text-color);
+    line-height: 1.6;
+    overflow-x: hidden;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Background Blobs */
+.background-blobs {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    overflow: hidden;
+}
+
+.blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.5;
+    animation: move 20s infinite alternate;
+}
+
+.blob-1 {
+    width: 400px;
+    height: 400px;
+    background: #4a90e2;
+    top: -100px;
+    left: -100px;
+}
+
+.blob-2 {
+    width: 350px;
+    height: 350px;
+    background: #f06292;
+    bottom: -50px;
+    right: -50px;
+    animation-delay: -5s;
+}
+
+@keyframes move {
+    from { transform: translate(0, 0); }
+    to { transform: translate(100px, 100px); }
+}
+
+.container {
+    width: 90%;
+    max-width: 800px;
+    padding: 2rem 0;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+header h1 {
+    font-size: 2.2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #2c3e50;
+}
+
+header p {
+    font-size: 1.1rem;
+    color: #576574;
+}
+
+/* Glass Card */
+.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 20px;
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    overflow: hidden;
+    transition: transform 0.3s ease;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    background: rgba(0, 0, 0, 0.03);
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 1.2rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--secondary-color);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.tab-btn i {
+    font-size: 1.2rem;
+}
+
+.tab-btn.active {
+    color: var(--primary-color);
+    background: rgba(255, 255, 255, 0.5);
+    border-bottom: 3px solid var(--primary-color);
+}
+
+.tab-btn:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Content Section */
+.content-section {
+    padding: 2.5rem;
+}
+
+/* Drop Zone */
+.drop-zone {
+    border: 2px dashed #cbd5e0;
+    border-radius: 15px;
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--primary-color);
+    background: rgba(74, 144, 226, 0.05);
+}
+
+.drop-zone-content i {
+    font-size: 3.5rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.drop-zone-content p {
+    font-size: 1.1rem;
+    color: #4a5568;
+}
+
+.drop-zone-content span {
+    color: var(--primary-color);
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.file-info {
+    margin-top: 1rem;
+    font-size: 0.85rem !important;
+    color: #718096 !important;
+}
+
+/* Process Section */
+.process-section {
+    text-align: center;
+}
+
+.hidden {
+    display: none;
+}
+
+.file-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 10px;
+}
+
+.file-preview i {
+    font-size: 1.8rem;
+    color: var(--primary-color);
+}
+
+.file-preview span {
+    font-weight: 600;
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Progress Bar */
+.progress-container {
+    width: 100%;
+    height: 10px;
+    background: #edf2f7;
+    border-radius: 5px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.progress-bar {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), #63b3ed);
+    border-radius: 5px;
+    transition: width 0.3s ease;
+}
+
+#status-text {
+    font-size: 0.9rem;
+    color: #4a5568;
+    margin-bottom: 2rem;
+}
+
+/* Buttons */
+.primary-btn, .download-btn, .secondary-btn {
+    width: 100%;
+    padding: 1rem;
+    border: none;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.primary-btn {
+    background: var(--primary-color);
+    color: white;
+    box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
+}
+
+.primary-btn:hover {
+    background: #357abd;
+    transform: translateY(-2px);
+}
+
+.download-btn {
+    background: var(--success-color);
+    color: white;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+}
+
+.download-btn:hover {
+    background: #218838;
+    transform: translateY(-2px);
+}
+
+.secondary-btn {
+    background: transparent;
+    border: 1px solid #cbd5e0;
+    color: #4a5568;
+}
+
+.secondary-btn:hover {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.success-icon {
+    font-size: 4rem;
+    color: var(--success-color);
+    margin-bottom: 1rem;
+    animation: scaleIn 0.5s ease;
+}
+
+@keyframes scaleIn {
+    from { transform: scale(0); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+footer {
+    text-align: center;
+    margin-top: 2rem;
+    color: #718096;
+    font-size: 0.9rem;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 600px) {
+    .container {
+        width: 95%;
+    }
+    
+    header h1 {
+        font-size: 1.6rem;
+    }
+    
+    .content-section {
+        padding: 1.5rem;
+    }
+    
+    .tab-btn {
+        padding: 1rem 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    .drop-zone {
+        padding: 2rem 1rem;
+    }
+}
