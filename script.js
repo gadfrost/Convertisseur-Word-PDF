@@ -52,12 +52,12 @@ let deferredPrompt;
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('Service Worker enregistré !'))
-            .catch(err => console.log('Erreur Service Worker:', err));
+            .then(reg => console.log('Service Worker enregistré avec succès !'))
+            .catch(err => console.error('Erreur d\'enregistrement du Service Worker:', err));
     });
 }
 
-// --- PWA Installation Logic ---
+// --- Logique d'installation de la PWA ---
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
@@ -77,7 +77,7 @@ if (installBtn) {
     });
 }
 
-// --- Gestion des Onglets ---
+// --- Gestion des Onglets (Modes) ---
 tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
         tabBtns.forEach(b => b.classList.remove('active'));
@@ -91,24 +91,30 @@ tabBtns.forEach(btn => {
 function updateUIForMode() {
     if (currentMode === 'word-to-pdf') {
         if (fileInfoText) fileInfoText.textContent = "Fichiers acceptés : .docx";
-        if (fileIcon) fileIcon.className = "fas fa-file-word";
+        if (fileIcon) fileIcon.className = "fas fa-file-word main-icon";
+        if (fileInput) fileInput.accept = ".docx";
     } else {
         if (fileInfoText) fileInfoText.textContent = "Fichiers acceptés : .pdf";
-        if (fileIcon) fileIcon.className = "fas fa-file-pdf";
+        if (fileIcon) fileIcon.className = "fas fa-file-pdf main-icon";
+        if (fileInput) fileInput.accept = ".pdf";
     }
 }
 
 // --- Gestion du Drag & Drop ---
-dropZone.addEventListener('click', () => fileInput.click());
-dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('drag-over');
-    handleFiles(e.dataTransfer.files);
-});
+if (dropZone) {
+    dropZone.addEventListener('click', () => { if (fileInput) fileInput.click(); });
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        handleFiles(e.dataTransfer.files);
+    });
+}
 
-fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+if (fileInput) {
+    fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+}
 
 function handleFiles(files) {
     if (files.length === 0) return;
@@ -116,51 +122,55 @@ function handleFiles(files) {
     const extension = file.name.split('.').pop().toLowerCase();
 
     if (currentMode === 'word-to-pdf' && extension !== 'docx') {
-        alert("Veuillez sélectionner un fichier .docx");
+        alert("Veuillez sélectionner un fichier valide avec l'extension .docx");
         return;
     }
     if (currentMode === 'pdf-to-word' && extension !== 'pdf') {
-        alert("Veuillez sélectionner un fichier .pdf");
+        alert("Veuillez sélectionner un fichier valide avec l'extension .pdf");
         return;
     }
 
     selectedFile = file;
-    fileNameDisplay.textContent = file.name;
-    dropZone.classList.add('hidden');
-    processSection.classList.remove('hidden');
-    convertBtn.classList.remove('hidden');
-    downloadSection.classList.add('hidden');
+    if (fileNameDisplay) fileNameDisplay.textContent = file.name;
+    
+    if (dropZone) dropZone.classList.add('hidden');
+    if (processSection) processSection.classList.remove('hidden');
+    if (convertBtn) convertBtn.classList.remove('hidden');
+    if (downloadSection) downloadSection.classList.add('hidden');
+    
     updateProgress(0);
-    statusText.textContent = "Fichier prêt.";
+    if (statusText) statusText.textContent = "Fichier chargé avec succès. Prêt pour l'action.";
 }
 
-// --- Logique de Conversion ---
-convertBtn.addEventListener('click', async () => {
-    if (!selectedFile) return;
+// --- Contrôleur de Conversion ---
+if (convertBtn) {
+    convertBtn.addEventListener('click', async () => {
+        if (!selectedFile) return;
 
-    convertBtn.classList.add('hidden');
-    statusText.textContent = "Conversion en cours...";
-    updateProgress(10);
+        convertBtn.classList.add('hidden');
+        if (statusText) statusText.textContent = "Analyse et traitement du document...";
+        updateProgress(10);
 
-    try {
-        if (currentMode === 'word-to-pdf') {
-            await convertWordToPdf(selectedFile);
-        } else {
-            await convertPdfToWord(selectedFile);
+        try {
+            if (currentMode === 'word-to-pdf') {
+                await convertWordToPdf(selectedFile);
+            } else {
+                await convertPdfToWord(selectedFile);
+            }
+        } catch (error) {
+            console.error("Erreur détectée pendant la conversion :", error);
+            if (statusText) statusText.textContent = "Erreur : " + error.message;
+            convertBtn.classList.remove('hidden');
+            if (progressBar) progressBar.style.backgroundColor = '#ef4444';
         }
-    } catch (error) {
-        console.error("Erreur de conversion:", error);
-        statusText.textContent = "Erreur : " + error.message;
-        convertBtn.classList.remove('hidden');
-        progressBar.style.backgroundColor = 'var(--error-color, #ef4444)';
-    }
-});
+    });
+}
 
-// REPARATION : Word -> PDF (Plus de page blanche)
+// LOGIQUE CORRIGÉE : Word -> PDF (Capture asynchrone sécurisée)
 async function convertWordToPdf(file) {
     return new Promise((resolve, reject) => {
         if (typeof mammoth === 'undefined' || typeof html2pdf === 'undefined') {
-            reject(new Error("Les bibliothèques de conversion ne sont pas encore prêtes. Réessayez dans une seconde."));
+            reject(new Error("Les moteurs de décodage ne sont pas encore prêts. Veuillez patienter une seconde."));
             return;
         }
 
@@ -173,22 +183,22 @@ async function convertWordToPdf(file) {
             .then(function(result) {
                 const htmlContent = result.value;
                 
-                if (!htmlContent.trim()) {
-                    reject(new Error("Le fichier Word semble vide ou illisible."));
+                if (!htmlContent || !htmlContent.trim()) {
+                    reject(new Error("Le fichier inséré ne contient aucun texte exploitable."));
                     return;
                 }
 
-                // Création d'un conteneur visible temporairement pour forcer html2pdf à voir le texte
-                const element = document.createElement('div');
-                element.innerHTML = htmlContent;
-                element.style.padding = "30px";
-                element.style.width = "600px";
-                element.style.color = "#000000";
-                element.style.backgroundColor = "#ffffff";
-                element.style.fontFamily = "Arial, sans-serif";
-                element.style.position = "absolute";
-                element.style.left = "-9999px"; // Caché hors de l'écran mais lisible par le moteur de rendu
-                document.body.appendChild(element);
+                // Injection dynamique forcée dans une boîte isolée (Résout l'anomalie de la page blanche)
+                const sandbox = document.createElement('div');
+                sandbox.innerHTML = htmlContent;
+                sandbox.style.padding = "40px";
+                sandbox.style.width = "650px";
+                sandbox.style.color = "#000000";
+                sandbox.style.backgroundColor = "#ffffff";
+                sandbox.style.fontFamily = "Arial, sans-serif";
+                sandbox.style.position = "absolute";
+                sandbox.style.left = "-9999px"; 
+                document.body.appendChild(sandbox);
 
                 updateProgress(70);
 
@@ -200,30 +210,30 @@ async function convertWordToPdf(file) {
                     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
                 };
 
-                // html2pdf direct sur le flux pour éviter la rupture de promesse
-                html2pdf().set(opt).from(element).outputPdf('blob').then((blob) => {
+                // Pipeline html2pdf direct sur le flux
+                html2pdf().set(opt).from(sandbox).outputPdf('blob').then((blob) => {
                     convertedBlob = blob;
                     convertedFileName = file.name.replace('.docx', '.pdf');
-                    document.body.removeChild(element);
+                    document.body.removeChild(sandbox); // Libération immédiate de la mémoire dom
                     showDownload();
                     resolve();
                 }).catch(err => {
-                    if(document.body.contains(element)) document.body.removeChild(element);
+                    if (document.body.contains(sandbox)) document.body.removeChild(sandbox);
                     reject(err);
                 });
             })
-            .catch(err => reject(new Error("Erreur lors du décodage du Word : " + err.message)));
+            .catch(err => reject(new Error("Mammoth n'a pas pu traiter la structure : " + err.message)));
         };
-        reader.onerror = () => reject(new Error("Erreur physique de lecture du fichier."));
+        reader.onerror = () => reject(new Error("Erreur physique lors de l'accès au fichier."));
         reader.readAsArrayBuffer(file);
     });
 }
 
-// REPARATION : PDF -> Word (Extraction universelle en Blob MS-Word sans plantage de bibliothèque)
+// LOGIQUE CORRIGÉE : PDF -> Word (Extraction unifiée et encapsulation Blob MS-Word)
 async function convertPdfToWord(file) {
     return new Promise((resolve, reject) => {
         if (typeof pdfjsLib === 'undefined') {
-            reject(new Error("La bibliothèque PDF.js n'est pas chargée."));
+            reject(new Error("La bibliothèque PDF.js requise n'a pas pu être initialisée."));
             return;
         }
 
@@ -233,7 +243,7 @@ async function convertPdfToWord(file) {
                 const typedarray = new Uint8Array(e.target.result);
                 const loadingTask = pdfjsLib.getDocument(typedarray);
                 const pdf = await loadingTask.promise;
-                let fullText = "";
+                let textAccumulator = "";
 
                 updateProgress(30);
                 
@@ -241,26 +251,26 @@ async function convertPdfToWord(file) {
                     const page = await pdf.getPage(i);
                     const textContent = await page.getTextContent();
                     const pageText = textContent.items.map(item => item.str).join(' ');
-                    fullText += `<p style="margin-bottom: 15px; line-height: 1.6;">${pageText}</p>\n`;
-                    updateProgress(30 + (i / pdf.numPages) * 50);
+                    textAccumulator += `<p style="margin-bottom: 14px; line-height: 1.5; font-size: 11pt;">${pageText}</p>\n`;
+                    updateProgress(30 + Math.floor((i / pdf.numPages) * 50));
                 }
 
-                if (!fullText.replace(/<[^>]*>/g, '').trim()) {
-                    throw new Error("Aucun texte extractible trouvé (Le PDF est peut-être une image scannée).");
+                if (!textAccumulator.replace(/<[^>]*>/g, '').trim()) {
+                    throw new Error("Aucune chaîne textuelle n'a pu être extraite (Le PDF provient probablement d'un scan ou d'une image).");
                 }
 
-                // Génération d'un fichier Word structuré au format HTML-DOC, lisible nativement par Microsoft Word
+                // Génération du conteneur HTML interprétable nativement par Microsoft Word
                 const docContent = `
                     <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
-                    <head><meta charset="utf-8"><title>Converti</title></head>
+                    <head><meta charset="utf-8"></head>
                     <body style="font-family: Arial, sans-serif; padding: 40px;">
-                        ${fullText}
+                        ${textAccumulator}
                     </body>
                     </html>
                 `;
 
                 convertedBlob = new Blob(['\ufeff' + docContent], { type: 'application/msword' });
-                convertedFileName = file.name.replace('.pdf', '.docx');
+                convertedFileName = file.name.replace('.pdf', '.doc'); // .doc assure une rétrocompatibilité complète sans plantage
                 
                 showDownload();
                 resolve();
@@ -268,7 +278,7 @@ async function convertPdfToWord(file) {
                 reject(err);
             }
         };
-        reader.onerror = () => reject(new Error("Erreur de lecture du PDF."));
+        reader.onerror = () => reject(new Error("Erreur lors de la lecture du flux PDF."));
         reader.readAsArrayBuffer(file);
     });
 }
@@ -279,39 +289,43 @@ function updateProgress(percent) {
 
 function showDownload() {
     updateProgress(100);
-    statusText.textContent = "Terminé !";
-    downloadSection.classList.remove('hidden');
+    if (statusText) statusText.textContent = "Opération terminée avec succès !";
+    if (downloadSection) downloadSection.classList.remove('hidden');
 }
 
-downloadBtn.addEventListener('click', () => {
-    if (convertedBlob) {
-        if (typeof saveAs !== 'undefined') {
-            saveAs(convertedBlob, convertedFileName);
-        } else {
-            // Solution de secours native si FileSaver échoue
-            const url = URL.createObjectURL(convertedBlob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = convertedFileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+if (downloadBtn) {
+    downloadBtn.addEventListener('click', () => {
+        if (convertedBlob) {
+            if (typeof saveAs !== 'undefined') {
+                saveAs(convertedBlob, convertedFileName);
+            } else {
+                // Solution Fallback natif standard
+                const url = URL.createObjectURL(convertedBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = convertedFileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
         }
-    }
-});
+    });
+}
 
-resetBtn.addEventListener('click', () => resetUI());
+if (resetBtn) {
+    resetBtn.addEventListener('click', () => resetUI());
+}
 
 function resetUI() {
     selectedFile = null;
     convertedBlob = null;
     convertedFileName = "";
-    dropZone.classList.remove('hidden');
-    processSection.classList.add('hidden');
-    downloadSection.classList.add('hidden');
+    if (fileInput) fileInput.value = "";
+    if (dropZone) dropZone.classList.remove('hidden');
+    if (processSection) processSection.classList.add('hidden');
+    if (downloadSection) downloadSection.classList.add('hidden');
     updateProgress(0);
     if (progressBar) progressBar.style.backgroundColor = '';
-    fileInput.value = "";
     updateUIForMode();
 }
