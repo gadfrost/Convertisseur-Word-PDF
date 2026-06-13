@@ -149,7 +149,7 @@ if (convertBtn) {
     });
 }
 
-// --- 9. FONCTION DE CONVERSION : WORD -> PDF (CORRIGÉE VISIBLE POUR MOBILE) ---
+// --- 9. FONCTION DE CONVERSION : WORD -> PDF (RENDU VISUEL AMÉLIORÉ ET SÉCURISÉ) ---
 async function convertWordToPdf(file) {
     return new Promise((resolve, reject) => {
         if (typeof mammoth === 'undefined' || typeof html2pdf === 'undefined') {
@@ -171,28 +171,37 @@ async function convertWordToPdf(file) {
                     return;
                 }
 
-                // Pour éviter la page blanche sur mobile, le conteneur doit être visible brièvement dans le DOM
                 const sandbox = document.createElement('div');
                 sandbox.id = "pdf-sandbox";
-                sandbox.innerHTML = htmlContent;
+                sandbox.innerHTML = `<div class="word-content">${htmlContent}</div>`;
                 
-                // Style émulant une feuille A4 visible en bas de page pour forcer Chrome Mobile à calculer les pixels
+                // Style simulant une feuille A4 visible pour forcer Chrome Mobile à calculer les géométries textuelles
                 sandbox.style.position = "relative";
                 sandbox.style.width = "100%";
                 sandbox.style.maxWidth = "800px";
-                sandbox.style.margin = "50px auto";
-                sandbox.style.padding = "40px";
+                sandbox.style.margin = "40px auto";
+                sandbox.style.padding = "50px";
                 sandbox.style.backgroundColor = "#ffffff";
                 sandbox.style.color = "#000000";
-                sandbox.style.fontFamily = "Arial, sans-serif";
-                sandbox.style.borderRadius = "8px";
-                sandbox.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
+                sandbox.style.fontFamily = "'Times New Roman', Times, serif";
+                sandbox.style.fontSize = "14px";
+                sandbox.style.lineHeight = "1.6";
+                sandbox.style.textAlign = "justify";
+                
+                // Styles injectés pour redimensionner proprement les logos et restructurer les blocs de la page de garde
+                const styleTag = document.createElement('style');
+                styleTag.innerHTML = `
+                    #pdf-sandbox img { max-width: 180px !important; height: auto !important; display: block; margin: 15px auto !important; }
+                    #pdf-sandbox p { margin-bottom: 12px; }
+                    #pdf-sandbox h1, #pdf-sandbox h2, #pdf-sandbox h3 { text-align: center; margin-top: 15px; margin-bottom: 15px; font-weight: bold; }
+                `;
+                sandbox.appendChild(styleTag);
                 
                 document.body.appendChild(sandbox);
                 updateProgress(60);
-                if (statusText) statusText.textContent = "Génération de la matrice graphique du PDF...";
+                if (statusText) statusText.textContent = "Génération de la mise en page graphique...";
 
-                // Temporisation obligatoire pour laisser le processeur mobile dessiner le texte à l'écran
+                // Temporisation d'attente de rendu
                 setTimeout(() => {
                     const opt = {
                         margin:       15,
@@ -205,8 +214,6 @@ async function convertWordToPdf(file) {
                     html2pdf().set(opt).from(sandbox).outputPdf('blob').then((blob) => {
                         convertedBlob = blob;
                         convertedFileName = file.name.replace('.docx', '.pdf');
-                        
-                        // Nettoyage de l'interface après capture
                         document.body.removeChild(sandbox); 
                         showDownload();
                         resolve();
@@ -223,7 +230,7 @@ async function convertWordToPdf(file) {
     });
 }
 
-// --- 10. FONCTION DE CONVERSION : PDF -> WORD (CORRIGÉE FORMAT UNIVERSEL MOBILE) ---
+// --- 10. FONCTION DE CONVERSION : PDF -> WORD (RECONSTRUCTION STRATEGIQUE MULTI-PAGE ET COMPATIBLE WORD MOBILE) ---
 async function convertPdfToWord(file) {
     return new Promise((resolve, reject) => {
         if (typeof pdfjsLib === 'undefined') {
@@ -237,41 +244,52 @@ async function convertPdfToWord(file) {
                 const typedarray = new Uint8Array(e.target.result);
                 const loadingTask = pdfjsLib.getDocument(typedarray);
                 const pdf = await loadingTask.promise;
-                let textAccumulator = "";
+                let htmlAccumulator = "";
                 let isScannedPdf = false;
 
                 updateProgress(20);
-                if (statusText) statusText.textContent = "Analyse du texte natif du fichier...";
+                if (statusText) statusText.textContent = "Analyse de l'alignement des paragraphes...";
                 
-                // Tentative d'extraction native
+                // Parcours pour extraction du texte natif structuré
                 for (let i = 1; i <= pdf.numPages; i++) {
                     const page = await pdf.getPage(i);
                     const textContent = await page.getTextContent();
-                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    
+                    let lastY = null;
+                    let pageText = "";
+                    
+                    // Reconstruction fine avec détection des coupures de lignes d'origine
+                    for (let item of textContent.items) {
+                        if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) {
+                            pageText += "<br/>";
+                        }
+                        pageText += item.str + " ";
+                        lastY = item.transform[5];
+                    }
+
                     if (pageText.trim()) {
-                        textAccumulator += `[PAGE ${i}]\n${pageText}\n\n`;
+                        htmlAccumulator += `<div class="page" style="page-break-after:always; font-family:Arial, sans-serif; font-size:11pt; line-height:1.5; margin-bottom:30px;">${pageText}</div>`;
                     }
                     updateProgress(20 + Math.floor((i / pdf.numPages) * 20));
                 }
 
-                // Si aucune structure texte (PDF scanné / image), initialisation OCR Tesseract v5
-                if (!textAccumulator.trim()) {
+                // Mode OCR Tesseract v5 si le PDF ne contient aucune couche texte native
+                if (!htmlAccumulator.replace(/<[^>]*>/g, '').trim()) {
                     if (typeof Tesseract === 'undefined') {
                         throw new Error("Le moteur OCR (Tesseract) n'est pas accessible.");
                     }
                     
                     isScannedPdf = true;
-                    if (statusText) statusText.textContent = "PDF Image détecté. Initialisation de l'OCR...";
+                    if (statusText) statusText.textContent = "Document image identifié. Lancement de la reconnaissance optique...";
                     updateProgress(45);
                     
                     const worker = await Tesseract.createWorker('fra');
                     
                     for (let i = 1; i <= pdf.numPages; i++) {
-                        if (statusText) statusText.textContent = `Numérisation optique de la page ${i}/${pdf.numPages}...`;
+                        if (statusText) statusText.textContent = `Traitement de la page ${i}/${pdf.numPages}...`;
                         
                         const page = await pdf.getPage(i);
                         const viewport = page.getViewport({ scale: 1.5 }); 
-                        
                         const canvas = document.createElement('canvas');
                         const context = canvas.getContext('2d');
                         canvas.height = viewport.height;
@@ -280,24 +298,42 @@ async function convertPdfToWord(file) {
                         await page.render({ canvasContext: context, viewport: viewport }).promise;
                         
                         const { data: { text } } = await worker.recognize(canvas);
-                        if (text.trim()) {
-                            textAccumulator += `[PAGE ${i} (SCAN)]\n${text}\n\n`;
-                        }
-                        
+                        const formattedText = text.split('\n')
+                                                  .map(line => line.trim() ? `<p style="margin:0 0 6px 0;">${line}</p>` : '<br/>')
+                                                  .join('');
+                                                  
+                        htmlAccumulator += `<div class="page" style="page-break-after:always;">${formattedText}</div>`;
                         updateProgress(45 + Math.floor((i / pdf.numPages) * 45));
                     }
                     await worker.terminate();
                 }
 
-                if (!textAccumulator.trim()) {
-                    throw new Error("Aucune chaîne textuelle n'a pu être extraite.");
+                if (!htmlAccumulator.replace(/<[^>]*>/g, '').trim()) {
+                    throw new Error("Aucune chaîne textuelle n'a pu être interceptée.");
                 }
 
-                if (statusText) statusText.textContent = "Génération du fichier compatible mobile...";
+                if (statusText) statusText.textContent = "Génération de l'en-tête natif Microsoft Office...";
 
-                // Génération en texte brut universel (.txt) pour garantir l'ouverture immédiate sur tous les smartphones sans refus de Word Mobile
-                convertedBlob = new Blob([textAccumulator], { type: 'text/plain;charset=utf-8' });
-                convertedFileName = file.name.replace('.pdf', isScannedPdf ? '_scan.txt' : '.txt');
+                // Utilisation de l'espace de nommage Office XML complet pour forcer l'application Word Mobile à décoder et accepter le document
+                const docContent = `
+                    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+                    <head>
+                        <meta charset="utf-8">
+                        <style>
+                            body { font-family: 'Arial', sans-serif; padding: 50px; color: #000000; background-color: #ffffff; }
+                            p { margin: 0 0 10px 0; line-height: 1.4; }
+                            .page { page-break-after: always; }
+                        </style>
+                    </head>
+                    <body>
+                        ${htmlAccumulator}
+                    </body>
+                    </html>
+                `;
+
+                // Création du flux binaire avec le BOM UTF-8 (\ufeff) pour éviter les caractères corrompus
+                convertedBlob = new Blob(['\ufeff' + docContent], { type: 'application/msword;charset=utf-8' });
+                convertedFileName = file.name.replace('.pdf', isScannedPdf ? '_scan.doc' : '.doc');
                 
                 showDownload();
                 resolve();
