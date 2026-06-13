@@ -5,21 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Convertisseur Universel Word & PDF</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4a90e2">
+    
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- Bibliothèques CDN -->
-    <!-- Mammoth.js pour Word vers HTML -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-    <!-- html2pdf.js pour HTML vers PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <!-- pdf.js pour extraire le texte des PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <!-- docx.js pour générer des fichiers .docx -->
     <script src="https://unpkg.com/docx@8.2.3/build/index.js"></script>
-    <!-- FileSaver.js pour faciliter le téléchargement -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
 <body>
@@ -30,7 +28,12 @@
 
     <main class="container">
         <header>
-            <h1><i class="fas fa-sync-alt"></i> Convertisseur Universel</h1>
+            <div class="header-top">
+                <h1><i class="fas fa-sync-alt"></i> Convertisseur Universel</h1>
+                <button id="install-btn" class="install-btn hidden">
+                    <i class="fas fa-download"></i> Installer l'App
+                </button>
+            </div>
             <p>Word & PDF - 100% Gratuit & Sécurisé</p>
         </header>
 
