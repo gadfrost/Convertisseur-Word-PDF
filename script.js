@@ -37,8 +37,7 @@ if ('serviceWorker' in navigator) {
     });
 }
 
-// --- 5. LOGIQUE D'INSTALLATION PWA (MODIFIÉE : BOUTON TOUJOURS VISIBLE) ---
-// On s'assure que le bouton d'installation ne se cache plus jamais tout seul au démarrage
+// --- 5. LOGIQUE D'INSTALLATION PWA (BOUTON TOUJOURS VISIBLE) ---
 if (installBtn) {
     installBtn.classList.remove('hidden');
 }
@@ -56,7 +55,7 @@ if (installBtn) {
             console.log(`Statut d'installation : ${outcome}`);
             deferredPrompt = null;
         } else {
-            alert("L'installation est gérée directement par votre navigateur. Cliquez sur les 3 petits points en haut à droite de Chrome, puis sur 'Ajouter à l'écran d'accueil'.");
+            alert("L'installation est directement gérée par votre navigateur. Cliquez sur les 3 petits points en haut à droite de Chrome, puis sur 'Ajouter à l'écran d'accueil'.");
         }
     });
 }
@@ -150,7 +149,7 @@ if (convertBtn) {
     });
 }
 
-// --- 9. FONCTION DE CONVERSION : WORD -> PDF ---
+// --- 9. FONCTION DE CONVERSION : WORD -> PDF (CORRIGÉE VISIBLE POUR MOBILE) ---
 async function convertWordToPdf(file) {
     return new Promise((resolve, reject) => {
         if (typeof mammoth === 'undefined' || typeof html2pdf === 'undefined') {
@@ -172,48 +171,59 @@ async function convertWordToPdf(file) {
                     return;
                 }
 
+                // Pour éviter la page blanche sur mobile, le conteneur doit être visible brièvement dans le DOM
                 const sandbox = document.createElement('div');
+                sandbox.id = "pdf-sandbox";
                 sandbox.innerHTML = htmlContent;
                 
-                sandbox.style.position = "fixed";
-                sandbox.style.left = "0";
-                sandbox.style.top = "-9999px"; 
-                sandbox.style.width = "794px"; 
+                // Style émulant une feuille A4 visible en bas de page pour forcer Chrome Mobile à calculer les pixels
+                sandbox.style.position = "relative";
+                sandbox.style.width = "100%";
+                sandbox.style.maxWidth = "800px";
+                sandbox.style.margin = "50px auto";
                 sandbox.style.padding = "40px";
                 sandbox.style.backgroundColor = "#ffffff";
                 sandbox.style.color = "#000000";
                 sandbox.style.fontFamily = "Arial, sans-serif";
+                sandbox.style.borderRadius = "8px";
+                sandbox.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
                 
                 document.body.appendChild(sandbox);
-                updateProgress(70);
+                updateProgress(60);
+                if (statusText) statusText.textContent = "Génération de la matrice graphique du PDF...";
 
-                const opt = {
-                    margin:       15,
-                    filename:     file.name.replace('.docx', '.pdf'),
-                    image:        { type: 'jpeg', quality: 0.98 },
-                    html2canvas:  { scale: 2, useCORS: true, logging: false },
-                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                };
+                // Temporisation obligatoire pour laisser le processeur mobile dessiner le texte à l'écran
+                setTimeout(() => {
+                    const opt = {
+                        margin:       15,
+                        filename:     file.name.replace('.docx', '.pdf'),
+                        image:        { type: 'jpeg', quality: 0.98 },
+                        html2canvas:  { scale: 2, useCORS: true, logging: false },
+                        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                    };
 
-                html2pdf().set(opt).from(sandbox).outputPdf('blob').then((blob) => {
-                    convertedBlob = blob;
-                    convertedFileName = file.name.replace('.docx', '.pdf');
-                    document.body.removeChild(sandbox); 
-                    showDownload();
-                    resolve();
-                }).catch(err => {
-                    if (document.body.contains(sandbox)) document.body.removeChild(sandbox);
-                    reject(err);
-                });
+                    html2pdf().set(opt).from(sandbox).outputPdf('blob').then((blob) => {
+                        convertedBlob = blob;
+                        convertedFileName = file.name.replace('.docx', '.pdf');
+                        
+                        // Nettoyage de l'interface après capture
+                        document.body.removeChild(sandbox); 
+                        showDownload();
+                        resolve();
+                    }).catch(err => {
+                        if (document.body.contains(sandbox)) document.body.removeChild(sandbox);
+                        reject(err);
+                    });
+                }, 400);
             })
-            .catch(err => reject(new Error("Erreur de structure Mammoth : " + err.message)));
+            .catch(err => reject(new Error("Erreur de décodage du Word : " + err.message)));
         };
         reader.onerror = () => reject(new Error("Erreur physique de lecture."));
         reader.readAsArrayBuffer(file);
     });
 }
 
-// --- 10. FONCTION DE CONVERSION : PDF -> WORD (AVEC WORKER TESSERACT v5) ---
+// --- 10. FONCTION DE CONVERSION : PDF -> WORD (CORRIGÉE FORMAT UNIVERSEL MOBILE) ---
 async function convertPdfToWord(file) {
     return new Promise((resolve, reject) => {
         if (typeof pdfjsLib === 'undefined') {
@@ -231,34 +241,36 @@ async function convertPdfToWord(file) {
                 let isScannedPdf = false;
 
                 updateProgress(20);
-                if (statusText) statusText.textContent = "Analyse de la structure textuelle...";
+                if (statusText) statusText.textContent = "Analyse du texte natif du fichier...";
                 
+                // Tentative d'extraction native
                 for (let i = 1; i <= pdf.numPages; i++) {
                     const page = await pdf.getPage(i);
                     const textContent = await page.getTextContent();
                     const pageText = textContent.items.map(item => item.str).join(' ');
                     if (pageText.trim()) {
-                        textAccumulator += `<p style="margin-bottom: 14px; line-height: 1.5; font-family: Arial, sans-serif;">${pageText}</p>\n`;
+                        textAccumulator += `[PAGE ${i}]\n${pageText}\n\n`;
                     }
                     updateProgress(20 + Math.floor((i / pdf.numPages) * 20));
                 }
 
-                if (!textAccumulator.replace(/<[^>]*>/g, '').trim()) {
+                // Si aucune structure texte (PDF scanné / image), initialisation OCR Tesseract v5
+                if (!textAccumulator.trim()) {
                     if (typeof Tesseract === 'undefined') {
                         throw new Error("Le moteur OCR (Tesseract) n'est pas accessible.");
                     }
                     
                     isScannedPdf = true;
-                    if (statusText) statusText.textContent = "PDF Image détecté. Initialisation du scanner optique...";
+                    if (statusText) statusText.textContent = "PDF Image détecté. Initialisation de l'OCR...";
                     updateProgress(45);
                     
                     const worker = await Tesseract.createWorker('fra');
                     
                     for (let i = 1; i <= pdf.numPages; i++) {
-                        if (statusText) statusText.textContent = `Numérisation de la page ${i} sur ${pdf.numPages}...`;
+                        if (statusText) statusText.textContent = `Numérisation optique de la page ${i}/${pdf.numPages}...`;
                         
                         const page = await pdf.getPage(i);
-                        const viewport = page.getViewport({ scale: 2.0 }); 
+                        const viewport = page.getViewport({ scale: 1.5 }); 
                         
                         const canvas = document.createElement('canvas');
                         const context = canvas.getContext('2d');
@@ -268,37 +280,24 @@ async function convertPdfToWord(file) {
                         await page.render({ canvasContext: context, viewport: viewport }).promise;
                         
                         const { data: { text } } = await worker.recognize(canvas);
-                        
-                        const formattedText = text.split('\n')
-                                                  .map(line => line.trim() ? `<p style="margin-bottom: 12px; line-height: 1.5; font-family: Arial, sans-serif;">${line}</p>` : '')
-                                                  .join('\n');
-                                                  
-                        textAccumulator += `\n${formattedText}\n`;
+                        if (text.trim()) {
+                            textAccumulator += `[PAGE ${i} (SCAN)]\n${text}\n\n`;
+                        }
                         
                         updateProgress(45 + Math.floor((i / pdf.numPages) * 45));
                     }
                     await worker.terminate();
                 }
 
-                if (!textAccumulator.replace(/<[^>]*>/g, '').trim()) {
-                    throw new Error("L'analyse optique n'a extrait aucune donnée intelligible.");
+                if (!textAccumulator.trim()) {
+                    throw new Error("Aucune chaîne textuelle n'a pu être extraite.");
                 }
 
-                if (statusText) statusText.textContent = "Création du document Word final...";
+                if (statusText) statusText.textContent = "Génération du fichier compatible mobile...";
 
-                const docContent = `
-                    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
-                    <head>
-                        <meta charset="utf-8">
-                    </head>
-                    <body style="padding: 90px; color: #000000; background-color: #ffffff;">
-                        ${textAccumulator}
-                    </body>
-                    </html>
-                `;
-
-                convertedBlob = new Blob(['\ufeff' + docContent], { type: 'application/msword;charset=utf-8' });
-                convertedFileName = file.name.replace('.pdf', isScannedPdf ? '_scan.doc' : '.doc');
+                // Génération en texte brut universel (.txt) pour garantir l'ouverture immédiate sur tous les smartphones sans refus de Word Mobile
+                convertedBlob = new Blob([textAccumulator], { type: 'text/plain;charset=utf-8' });
+                convertedFileName = file.name.replace('.pdf', isScannedPdf ? '_scan.txt' : '.txt');
                 
                 showDownload();
                 resolve();
