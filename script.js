@@ -178,6 +178,12 @@ async function convertPdfToWord(file) {
         const reader = new FileReader();
         reader.onload = async function(e) {
             try {
+                // Correction ici : Vérifier si docx est disponible via window.docx
+                const docxLib = window.docx;
+                if (!docxLib) {
+                    throw new Error("La bibliothèque de génération Word n'est pas chargée.");
+                }
+
                 const typedarray = new Uint8Array(e.target.result);
                 const loadingTask = pdfjsLib.getDocument(typedarray);
                 
@@ -198,17 +204,17 @@ async function convertPdfToWord(file) {
                     throw new Error("Aucun texte extractible trouvé dans ce PDF.");
                 }
 
-                const doc = new docx.Document({
+                const doc = new docxLib.Document({
                     sections: [{
                         children: fullText.split('\n').map(line => 
-                            new docx.Paragraph({
-                                children: [new docx.TextRun(line.trim() || " ")],
+                            new docxLib.Paragraph({
+                                children: [new docxLib.TextRun(line.trim() || " ")],
                             })
                         ),
                     }],
                 });
 
-                convertedBlob = await docx.Packer.toBlob(doc);
+                convertedBlob = await docxLib.Packer.toBlob(doc);
                 convertedFileName = file.name.replace('.pdf', '.docx');
                 
                 showDownload();
