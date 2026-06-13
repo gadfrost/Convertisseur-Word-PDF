@@ -186,6 +186,10 @@ header p {
     background: rgba(255, 255, 255, 0.2);
 }
 
+.drop-zone.hidden {
+    display: none !important;
+}
+
 .drop-zone:hover, .drop-zone.drag-over {
     border-color: var(--primary-color);
     background: rgba(74, 144, 226, 0.05);
@@ -220,7 +224,7 @@ header p {
 }
 
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 .file-preview {
