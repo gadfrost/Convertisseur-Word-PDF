@@ -1,5 +1,29 @@
-// Configuration de PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+// --- Configuration et injection automatique des CDN requis ---
+(function injectRequiredLibraries() {
+    const libraries = [
+        { id: 'mammoth-cdn', src: "https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" },
+        { id: 'html2pdf-cdn', src: "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" },
+        { id: 'pdfjs-cdn', src: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" },
+        { id: 'filesaver-cdn', src: "https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" }
+    ];
+
+    libraries.forEach(lib => {
+        if (!document.getElementById(lib.id)) {
+            const script = document.createElement('script');
+            script.id = lib.id;
+            script.src = lib.src;
+            script.async = false;
+            document.head.appendChild(script);
+        }
+    });
+})();
+
+// Configuration de PDF.js worker (sécurisé après chargement du script)
+window.addEventListener('load', () => {
+    if (typeof pdfjsLib !== 'undefined') {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+});
 
 // Éléments DOM
 const dropZone = document.getElementById('drop-zone');
@@ -37,19 +61,21 @@ if ('serviceWorker' in navigator) {
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    installBtn.classList.remove('hidden');
+    if (installBtn) installBtn.classList.remove('hidden');
 });
 
-installBtn.addEventListener('click', async () => {
-    if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-            installBtn.classList.add('hidden');
+if (installBtn) {
+    installBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                installBtn.classList.add('hidden');
+            }
+            deferredPrompt = null;
         }
-        deferredPrompt = null;
-    }
-});
+    });
+}
 
 // --- Gestion des Onglets ---
 tabBtns.forEach(btn => {
@@ -64,11 +90,11 @@ tabBtns.forEach(btn => {
 
 function updateUIForMode() {
     if (currentMode === 'word-to-pdf') {
-        fileInfoText.textContent = "Fichiers acceptés : .docx";
-        fileIcon.className = "fas fa-file-word";
+        if (fileInfoText) fileInfoText.textContent = "Fichiers acceptés : .docx";
+        if (fileIcon) fileIcon.className = "fas fa-file-word";
     } else {
-        fileInfoText.textContent = "Fichiers acceptés : .pdf";
-        fileIcon.className = "fas fa-file-pdf";
+        if (fileInfoText) fileInfoText.textContent = "Fichiers acceptés : .pdf";
+        if (fileIcon) fileIcon.className = "fas fa-file-pdf";
     }
 }
 
@@ -126,67 +152,86 @@ convertBtn.addEventListener('click', async () => {
         console.error("Erreur de conversion:", error);
         statusText.textContent = "Erreur : " + error.message;
         convertBtn.classList.remove('hidden');
-        progressBar.style.backgroundColor = 'var(--error-color)';
+        progressBar.style.backgroundColor = 'var(--error-color, #ef4444)';
     }
 });
 
+// REPARATION : Word -> PDF (Plus de page blanche)
 async function convertWordToPdf(file) {
     return new Promise((resolve, reject) => {
+        if (typeof mammoth === 'undefined' || typeof html2pdf === 'undefined') {
+            reject(new Error("Les bibliothèques de conversion ne sont pas encore prêtes. Réessayez dans une seconde."));
+            return;
+        }
+
         const reader = new FileReader();
-        reader.onload = async function(e) {
-            try {
-                const arrayBuffer = e.target.result;
-                updateProgress(40);
+        reader.onload = function(e) {
+            const arrayBuffer = e.target.result;
+            updateProgress(40);
+            
+            mammoth.convertToHtml({ arrayBuffer: arrayBuffer })
+            .then(function(result) {
+                const htmlContent = result.value;
                 
-                const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
-                const html = result.value;
-                
+                if (!htmlContent.trim()) {
+                    reject(new Error("Le fichier Word semble vide ou illisible."));
+                    return;
+                }
+
+                // Création d'un conteneur visible temporairement pour forcer html2pdf à voir le texte
                 const element = document.createElement('div');
-                element.innerHTML = `<div style="padding: 40px; font-family: Arial, sans-serif;">${html}</div>`;
+                element.innerHTML = htmlContent;
+                element.style.padding = "30px";
+                element.style.width = "600px";
+                element.style.color = "#000000";
+                element.style.backgroundColor = "#ffffff";
+                element.style.fontFamily = "Arial, sans-serif";
+                element.style.position = "absolute";
+                element.style.left = "-9999px"; // Caché hors de l'écran mais lisible par le moteur de rendu
                 document.body.appendChild(element);
-                element.style.position = 'absolute';
-                element.style.left = '-9999px';
 
                 updateProgress(70);
 
                 const opt = {
-                    margin: 10,
-                    filename: file.name.replace('.docx', '.pdf'),
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2, useCORS: true, logging: false },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                    margin:       15,
+                    filename:     file.name.replace('.docx', '.pdf'),
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { scale: 2, useCORS: true, logging: false },
+                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
                 };
 
-                html2pdf().from(element).set(opt).toPdf().get('pdf').then((pdf) => {
-                    convertedBlob = pdf.output('blob');
+                // html2pdf direct sur le flux pour éviter la rupture de promesse
+                html2pdf().set(opt).from(element).outputPdf('blob').then((blob) => {
+                    convertedBlob = blob;
                     convertedFileName = file.name.replace('.docx', '.pdf');
                     document.body.removeChild(element);
                     showDownload();
                     resolve();
-                }).catch(reject);
-            } catch (err) {
-                reject(new Error("Impossible de lire le fichier Word."));
-            }
+                }).catch(err => {
+                    if(document.body.contains(element)) document.body.removeChild(element);
+                    reject(err);
+                });
+            })
+            .catch(err => reject(new Error("Erreur lors du décodage du Word : " + err.message)));
         };
-        reader.onerror = () => reject(new Error("Erreur de lecture du fichier."));
+        reader.onerror = () => reject(new Error("Erreur physique de lecture du fichier."));
         reader.readAsArrayBuffer(file);
     });
 }
 
+// REPARATION : PDF -> Word (Extraction universelle en Blob MS-Word sans plantage de bibliothèque)
 async function convertPdfToWord(file) {
     return new Promise((resolve, reject) => {
+        if (typeof pdfjsLib === 'undefined') {
+            reject(new Error("La bibliothèque PDF.js n'est pas chargée."));
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = async function(e) {
             try {
-                // Correction ici : Vérifier si docx est disponible via window.docx
-                const docxLib = window.docx;
-                if (!docxLib) {
-                    throw new Error("La bibliothèque de génération Word n'est pas chargée.");
-                }
-
                 const typedarray = new Uint8Array(e.target.result);
                 const loadingTask = pdfjsLib.getDocument(typedarray);
-                
                 const pdf = await loadingTask.promise;
                 let fullText = "";
 
@@ -196,25 +241,25 @@ async function convertPdfToWord(file) {
                     const page = await pdf.getPage(i);
                     const textContent = await page.getTextContent();
                     const pageText = textContent.items.map(item => item.str).join(' ');
-                    fullText += pageText + "\n\n";
+                    fullText += `<p style="margin-bottom: 15px; line-height: 1.6;">${pageText}</p>\n`;
                     updateProgress(30 + (i / pdf.numPages) * 50);
                 }
 
-                if (!fullText.trim()) {
-                    throw new Error("Aucun texte extractible trouvé dans ce PDF.");
+                if (!fullText.replace(/<[^>]*>/g, '').trim()) {
+                    throw new Error("Aucun texte extractible trouvé (Le PDF est peut-être une image scannée).");
                 }
 
-                const doc = new docxLib.Document({
-                    sections: [{
-                        children: fullText.split('\n').map(line => 
-                            new docxLib.Paragraph({
-                                children: [new docxLib.TextRun(line.trim() || " ")],
-                            })
-                        ),
-                    }],
-                });
+                // Génération d'un fichier Word structuré au format HTML-DOC, lisible nativement par Microsoft Word
+                const docContent = `
+                    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+                    <head><meta charset="utf-8"><title>Converti</title></head>
+                    <body style="font-family: Arial, sans-serif; padding: 40px;">
+                        ${fullText}
+                    </body>
+                    </html>
+                `;
 
-                convertedBlob = await docxLib.Packer.toBlob(doc);
+                convertedBlob = new Blob(['\ufeff' + docContent], { type: 'application/msword' });
                 convertedFileName = file.name.replace('.pdf', '.docx');
                 
                 showDownload();
@@ -229,19 +274,30 @@ async function convertPdfToWord(file) {
 }
 
 function updateProgress(percent) {
-    progressBar.style.width = percent + '%';
+    if (progressBar) progressBar.style.width = percent + '%';
 }
 
 function showDownload() {
     updateProgress(100);
     statusText.textContent = "Terminé !";
     downloadSection.classList.remove('hidden');
-    selectedFile = null;
 }
 
 downloadBtn.addEventListener('click', () => {
     if (convertedBlob) {
-        saveAs(convertedBlob, convertedFileName);
+        if (typeof saveAs !== 'undefined') {
+            saveAs(convertedBlob, convertedFileName);
+        } else {
+            // Solution de secours native si FileSaver échoue
+            const url = URL.createObjectURL(convertedBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = convertedFileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
     }
 });
 
@@ -255,7 +311,7 @@ function resetUI() {
     processSection.classList.add('hidden');
     downloadSection.classList.add('hidden');
     updateProgress(0);
-    progressBar.style.backgroundColor = '';
+    if (progressBar) progressBar.style.backgroundColor = '';
     fileInput.value = "";
     updateUIForMode();
 }
