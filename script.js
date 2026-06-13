@@ -1,32 +1,11 @@
-// --- Configuration et injection automatique des CDN requis ---
-(function injectRequiredLibraries() {
-    const libraries = [
-        { id: 'mammoth-cdn', src: "https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" },
-        { id: 'html2pdf-cdn', src: "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" },
-        { id: 'pdfjs-cdn', src: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" },
-        { id: 'filesaver-cdn', src: "https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" },
-        { id: 'tesseract-cdn', src: "https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js" }
-    ];
+// --- 1. CONFIGURATION INITIALE & DEPLOYEMENT DES WORKERS ---
+const pdfjsLib = window['pdfjs-dist/build/pdf'];
+if (pdfjsLib) {
+    // Force le chemin du worker pour éviter les échecs sur mobile et GitHub Pages
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+}
 
-    libraries.forEach(lib => {
-        if (!document.getElementById(lib.id)) {
-            const script = document.createElement('script');
-            script.id = lib.id;
-            script.src = lib.src;
-            script.async = false;
-            document.head.appendChild(script);
-        }
-    });
-})();
-
-// Configuration de PDF.js worker
-window.addEventListener('load', () => {
-    if (typeof pdfjsLib !== 'undefined') {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    }
-});
-
-// Éléments DOM
+// --- 2. CAPTURE DES ÉLÉMENTS DU DOM ---
 const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
 const tabBtns = document.querySelectorAll('.tab-btn');
@@ -42,23 +21,23 @@ const fileIcon = document.getElementById('file-icon');
 const fileInfoText = document.getElementById('file-info-text');
 const installBtn = document.getElementById('install-btn');
 
-// État de l'application
+// --- 3. ÉTAT DE L'APPLICATION ---
 let currentMode = 'word-to-pdf'; 
 let selectedFile = null;
 let convertedBlob = null;
 let convertedFileName = "";
 let deferredPrompt;
 
-// --- PWA Service Worker Registration ---
+// --- 4. ENREGISTREMENT DU SERVICE WORKER (PWA) ---
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('Service Worker enregistré avec succès !'))
-            .catch(err => console.error('Erreur Service Worker:', err));
+            .then(reg => console.log('Service Worker enregistré !'))
+            .catch(err => console.error('Erreur SW:', err));
     });
 }
 
-// --- Logique d'installation de la PWA ---
+// --- 5. LOGIQUE D'INSTALLATION PWA ---
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
@@ -78,7 +57,7 @@ if (installBtn) {
     });
 }
 
-// --- Gestion des Onglets (Modes) ---
+// --- 6. GESTION DES ONGLETS (MODES) ---
 tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
         tabBtns.forEach(b => b.classList.remove('active'));
@@ -101,7 +80,7 @@ function updateUIForMode() {
     }
 }
 
-// --- Gestion du Drag & Drop ---
+// --- 7. GESTION DU DRAG & DROP & CLIC DE ZONE ---
 if (dropZone) {
     dropZone.addEventListener('click', () => { if (fileInput) fileInput.click(); });
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
@@ -143,7 +122,7 @@ function handleFiles(files) {
     if (statusText) statusText.textContent = "Fichier chargé avec succès. Prêt pour l'action.";
 }
 
-// --- Contrôleur de Conversion ---
+// --- 8. ÉCOUTEUR DU BOUTON DE CONVERSION ---
 if (convertBtn) {
     convertBtn.addEventListener('click', async () => {
         if (!selectedFile) return;
@@ -167,7 +146,7 @@ if (convertBtn) {
     });
 }
 
-// MOTEUR UNIVERSEL : Word -> PDF (Résout la page blanche sur Smartphone/PC)
+// --- 9. FONCTION DE CONVERSION : WORD -> PDF ---
 async function convertWordToPdf(file) {
     return new Promise((resolve, reject) => {
         if (typeof mammoth === 'undefined' || typeof html2pdf === 'undefined') {
@@ -189,7 +168,6 @@ async function convertWordToPdf(file) {
                     return;
                 }
 
-                // Correctif Mobile : injection visible à opacité minimale dans la carte active
                 const containerSection = document.querySelector('.content-section');
                 const sandbox = document.createElement('div');
                 sandbox.innerHTML = htmlContent;
@@ -233,7 +211,7 @@ async function convertWordToPdf(file) {
     });
 }
 
-// MOTEUR UNIVERSEL + OCR : PDF -> Word (Lit les PDF textuels ET les PDF scans/images)
+// --- 10. FONCTION DE CONVERSION : PDF -> WORD (AVEC OCR TESSERACT v5) ---
 async function convertPdfToWord(file) {
     return new Promise((resolve, reject) => {
         if (typeof pdfjsLib === 'undefined') {
@@ -253,7 +231,7 @@ async function convertPdfToWord(file) {
                 updateProgress(20);
                 if (statusText) statusText.textContent = "Vérification de la structure du fichier...";
                 
-                // Étape 1 : Tentative de lecture textuelle native
+                // Tentative 1 : Lecture du texte natif (si le PDF n'est pas un scan)
                 for (let i = 1; i <= pdf.numPages; i++) {
                     const page = await pdf.getPage(i);
                     const textContent = await page.getTextContent();
@@ -264,26 +242,22 @@ async function convertPdfToWord(file) {
                     updateProgress(20 + Math.floor((i / pdf.numPages) * 20));
                 }
 
-                // Étape 2 : Si vide, déclenchement du moteur OCR Tesseract.js (Traitement local de l'image)
+                // Tentative 2 : Si aucun texte extrait, on passe en mode Image / OCR avec Tesseract v5
                 if (!textAccumulator.replace(/<[^>]*>/g, '').trim()) {
                     if (typeof Tesseract === 'undefined') {
-                        throw new Error("Moteur OCR indisponible. Vérifiez votre connexion internet pour charger les dépendances.");
+                        throw new Error("Le moteur OCR n'a pas pu être chargé par le navigateur.");
                     }
                     
                     isScannedPdf = true;
-                    if (statusText) statusText.textContent = "PDF Image détecté. Initialisation du scanner optique (OCR)...";
+                    if (statusText) statusText.textContent = "PDF Image détecté. Analyse optique en cours...";
                     updateProgress(45);
-
-                    // Création d'un worker Tesseract configuré en français
-                    const worker = await Tesseract.createWorker('fra');
                     
                     for (let i = 1; i <= pdf.numPages; i++) {
-                        if (statusText) statusText.textContent = `Numérisation et lecture de la page ${i} sur ${pdf.numPages}...`;
+                        if (statusText) statusText.textContent = `Numérisation de la page ${i} sur ${pdf.numPages}...`;
                         
                         const page = await pdf.getPage(i);
-                        const viewport = page.getViewport({ scale: 1.5 }); // Résolution d'image optimisée pour l'OCR
+                        const viewport = page.getViewport({ scale: 1.5 });
                         
-                        // Création d'un canvas invisible pour convertir la structure vectorielle en bitmap exploitable
                         const canvas = document.createElement('canvas');
                         const context = canvas.getContext('2d');
                         canvas.height = viewport.height;
@@ -291,23 +265,24 @@ async function convertPdfToWord(file) {
 
                         await page.render({ canvasContext: context, viewport: viewport }).promise;
                         
-                        // Analyse optique directe du canvas
-                        const { data: { text } } = await worker.recognize(canvas);
+                        // Reconnaissance optique directe via la v5
+                        const { data: { text } } = await Tesseract.recognize(canvas, 'fra');
                         
-                        // Formatage minimal des sauts de lignes détectés visuellement
-                        const formattedText = text.split('\n').map(line => line.trim() ? `<p style="margin-bottom: 10px;">${line}</p>` : '').join('\n');
+                        const formattedText = text.split('\n')
+                                                  .map(line => line.trim() ? `<p style="margin-bottom: 10px;">${line}</p>` : '')
+                                                  .join('\n');
+                                                  
                         textAccumulator += `\n${formattedText}\n`;
                         
                         updateProgress(45 + Math.floor((i / pdf.numPages) * 45));
                     }
-                    await worker.terminate();
                 }
 
                 if (!textAccumulator.replace(/<[^>]*>/g, '').trim()) {
                     throw new Error("L'analyse optique n'a extrait aucune donnée intelligible.");
                 }
 
-                // Génération du template final structuré au standard MS-Word HTML
+                // Génération de la structure HTML finale interprétable par MS-Word
                 const docContent = `
                     <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
                     <head><meta charset="utf-8"></head>
@@ -331,6 +306,7 @@ async function convertPdfToWord(file) {
     });
 }
 
+// --- 11. INTERFACES GRAPHIQUES DE RETOUR (PROGRESSION / RESET) ---
 function updateProgress(percent) {
     if (progressBar) progressBar.style.width = percent + '%';
 }
