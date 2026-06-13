@@ -6,17 +6,18 @@
     <title>Convertisseur Universel Word & PDF</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#4a90e2">
+    <meta name="theme-color" content="#6366f1">
     
+    <!-- Polices & Icônes -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- Chargement ordonné et synchrone des bibliothèques externes -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
     <div class="background-blobs">
@@ -46,11 +47,10 @@
             </nav>
 
             <div class="content-section">
-                
                 <div id="drop-zone" class="drop-zone">
                     <div class="drop-zone-content">
                         <i id="file-icon" class="fas fa-cloud-upload-alt"></i>
-                        <p id="drop-text">Glissez-deposez votre fichier ici ou <span>cliquez pour parcourir</span></p>
+                        <p id="drop-text">Glissez-déposez votre fichier ici ou <span>cliquez pour parcourir</span></p>
                         <p class="file-info" id="file-info-text">Fichiers acceptés : .docx</p>
                     </div>
                     <input type="file" id="file-input" hidden accept=".docx">
@@ -71,7 +71,7 @@
                     
                     <div id="download-section" class="hidden">
                         <div class="success-icon">
-                            <i class="fas fa-check-circle" style="color: #10b981; font-size: 2.5rem; margin-bottom: 10px;"></i>
+                            <i class="fas fa-check-circle"></i>
                         </div>
                         <p style="font-weight: 600; margin-bottom: 15px;">Conversion terminée avec succès !</p>
                         <button id="download-btn" class="download-btn">
@@ -80,7 +80,6 @@
                         <button id="reset-btn" class="secondary-btn">Convertir un autre fichier</button>
                     </div>
                 </div>
-
             </div>
         </div>
 
