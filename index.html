@@ -12,12 +12,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Chargement ordonné et synchrone des bibliothèques externes -->
+    <!-- Bibliothèques externes -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <!-- Ajout de docx.js pour une vraie génération DOCX -->
+    <script src="https://cdn.jsdelivr.net/npm/docx@7.1.0/build/index.js"></script>
 </head>
 <body>
     <div class="background-blobs">
@@ -29,7 +31,7 @@
         <header>
             <div class="header-top">
                 <h1><i class="fas fa-sync-alt"></i> Convertisseur Universel</h1>
-                <button id="install-btn" class="install-btn hidden">
+                <button id="install-btn" class="install-btn">
                     <i class="fas fa-download"></i> Installer l'App
                 </button>
             </div>
