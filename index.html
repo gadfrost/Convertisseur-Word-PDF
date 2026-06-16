@@ -18,8 +18,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <!-- Ajout de docx.js pour une vraie génération DOCX -->
     <script src="https://cdn.jsdelivr.net/npm/docx@7.1.0/build/index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
     <div class="background-blobs">
@@ -46,9 +46,13 @@
                 <button class="tab-btn" id="btn-pdf-to-word" data-mode="pdf-to-word">
                     <i class="fas fa-file-pdf"></i> PDF ➡️ Word
                 </button>
+                <button class="tab-btn" id="btn-qr-generator" data-mode="qr-generator">
+                    <i class="fas fa-qrcode"></i> QR Code
+                </button>
             </nav>
 
             <div class="content-section">
+                <!-- Zone de dépôt de fichiers -->
                 <div id="drop-zone" class="drop-zone">
                     <div class="drop-zone-content">
                         <i id="file-icon" class="fas fa-cloud-upload-alt"></i>
@@ -58,6 +62,17 @@
                     <input type="file" id="file-input" hidden accept=".docx">
                 </div>
 
+                <!-- Section Générateur de QR Code -->
+                <div id="qr-section" class="qr-section hidden">
+                    <div class="input-group">
+                        <label for="qr-input">Lien URL ou Texte :</label>
+                        <input type="text" id="qr-input" placeholder="https://votre-site.com" class="text-input">
+                    </div>
+                    <div id="qr-display" class="qr-display"></div>
+                    <button id="generate-qr-btn" class="primary-btn">Générer le QR Code</button>
+                </div>
+
+                <!-- Section de traitement de conversion -->
                 <div id="process-section" class="process-section hidden">
                     <div class="file-preview">
                         <i class="fas fa-file-alt"></i>
@@ -83,6 +98,11 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Zone publicitaire pour la monétisation -->
+        <div class="ad-container">
+            <div class="ad-placeholder">Publicité</div>
         </div>
 
         <footer>

@@ -434,3 +434,80 @@ footer {
         font-size: 1rem;
     }
 }
+
+/* --- Styles QR Code --- */
+.qr-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    animation: fadeIn 0.5s ease;
+}
+
+.input-group {
+    width: 100%;
+    text-align: left;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.text-input {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    background: white;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.text-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+}
+
+.qr-display {
+    padding: 1rem;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    min-height: 128px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* --- Zone Publicitaire --- */
+.ad-container {
+    margin-top: 2rem;
+    width: 100%;
+    max-width: 680px;
+    height: 90px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px dashed rgba(15, 23, 42, 0.1);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ad-placeholder {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+/* --- Styles pour la fidélité visuelle PDF --- */
+.pdf-render-container img {
+    max-width: 100%;
+    height: auto !important;
+    display: block;
+    margin: 0 auto;
+}
