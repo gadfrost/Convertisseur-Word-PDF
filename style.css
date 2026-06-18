@@ -58,7 +58,7 @@ body {
     width: 450px;
     height: 450px;
     background: #818cf8;
-    top: -10%',
+    top: -10%;
     left: -10%;
     animation: float-slow 25s infinite alternate ease-in-out;
 }
@@ -183,6 +183,7 @@ header p {
 }
 
 .tab-btn {
+    display: flex !important;
     flex: 1;
     padding: 1rem;
     border: none;

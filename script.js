@@ -15,6 +15,7 @@ const elements = {
     dropZone: document.getElementById('drop-zone'),
     fileInput: document.getElementById('file-input'),
     tabBtns: document.querySelectorAll('.tab-btn'),
+    btnQr: document.getElementById('btn-qr-generator'),
     processSection: document.getElementById('process-section'),
     qrSection: document.getElementById('qr-section'),
     downloadSection: document.getElementById('download-section'),
@@ -41,13 +42,15 @@ let state = {
 };
 
 // --- 4. NAVIGATION ET ONGLETS ---
+// Gestion robuste des onglets
 elements.tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
+        console.log("Changement de mode vers :", btn.dataset.mode);
         elements.tabBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         state.currentMode = btn.dataset.mode;
         updateUIForMode();
-        resetUI();
+        // Ne pas appeler resetUI ici pour éviter de vider le QR Code généré si on change d'onglet
     });
 });
 
@@ -101,11 +104,24 @@ elements.generateQrBtn.addEventListener('click', () => {
 
 function downloadQRCode() {
     const img = elements.qrDisplay.querySelector('img');
-    if (img) {
+    const canvas = elements.qrDisplay.querySelector('canvas');
+    
+    let dataUrl;
+    if (img && img.src) {
+        dataUrl = img.src;
+    } else if (canvas) {
+        dataUrl = canvas.toDataURL("image/png");
+    }
+
+    if (dataUrl) {
         const link = document.createElement('a');
-        link.href = img.src;
+        link.href = dataUrl;
         link.download = "qrcode-universel.png";
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
+    } else {
+        alert("Erreur lors de la préparation du téléchargement.");
     }
 }
 
@@ -155,44 +171,70 @@ async function convertWordToPdf(file) {
                 const arrayBuffer = e.target.result;
                 updateProgress(20);
                 
-                // Mammoth convertit le Word en HTML
-                const options = {
-                    styleMap: [
-                        "p[style-name='Title'] => h1:fresh",
-                        "p[style-name='Subtitle'] => h2:fresh"
-                    ]
-                };
-                
-                const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer }, options);
+                // Conversion Word -> HTML
+                const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
                 let html = result.value;
                 
-                // --- OPTIMISATION STRUCTURELLE ---
-                // On enveloppe le HTML dans un conteneur avec des styles de préservation
-                const container = document.createElement('div');
-                container.className = "pdf-render-container";
-                container.style.cssText = `
-                    padding: 40px;
-                    font-family: 'Arial', sans-serif;
-                    background: white;
-                    color: black;
-                    line-height: 1.5;
-                `;
+                // Création d'un conteneur de rendu temporaire
+                const renderDiv = document.createElement('div');
+                renderDiv.id = 'pdf-render-temp';
+                renderDiv.style.position = 'absolute';
+                renderDiv.style.left = '-9999px';
+                renderDiv.style.top = '0';
+                renderDiv.style.width = '794px'; // Largeur A4 standard (210mm @ 96dpi)
+                renderDiv.style.backgroundColor = 'white';
                 
-                // Injection de styles CSS correctifs pour les images et l'alignement
-                const styleInjection = `
+                // Styles CSS pour garantir la fidélité et le multi-pages
+                const styles = `
                     <style>
-                        img { max-width: 100% !important; height: auto !important; display: block; margin: 10px auto; }
-                        table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
-                        td, th { border: 1px solid #ddd; padding: 8px; }
-                        h1, h2, h3 { color: #2c3e50; margin-top: 20px; }
-                        p { margin-bottom: 12px; text-align: justify; }
+                        #pdf-render-temp {
+                            padding: 50px;
+                            color: #000;
+                            font-family: Arial, sans-serif;
+                            line-height: 1.5;
+                        }
+                        #pdf-render-temp img {
+                            max-width: 100%;
+                            height: auto;
+                            display: block;
+                            margin: 15px auto;
+                        }
+                        #pdf-render-temp table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin-bottom: 20px;
+                        }
+                        #pdf-render-temp td, #pdf-render-temp th {
+                            border: 1px solid #ccc;
+                            padding: 8px;
+                        }
+                        #pdf-render-temp h1, #pdf-render-temp h2, #pdf-render-temp h3 {
+                            color: #333;
+                            page-break-after: avoid;
+                        }
+                        #pdf-render-temp p {
+                            margin-bottom: 12px;
+                            text-align: justify;
+                            orphans: 3;
+                            widows: 3;
+                        }
                     </style>
                 `;
                 
-                container.innerHTML = styleInjection + html;
+                renderDiv.innerHTML = styles + html;
+                document.body.appendChild(renderDiv);
+                
                 updateProgress(50);
 
-                // Configuration de html2pdf pour une capture haute fidélité
+                // Attendre que les images soient chargées pour éviter les trous blancs
+                const images = renderDiv.getElementsByTagName('img');
+                const imagePromises = Array.from(images).map(img => {
+                    if (img.complete) return Promise.resolve();
+                    return new Promise(res => { img.onload = res; img.onerror = res; });
+                });
+                await Promise.all(imagePromises);
+
+                // Configuration html2pdf
                 const opt = {
                     margin: 10,
                     filename: file.name.replace('.docx', '.pdf'),
@@ -200,18 +242,38 @@ async function convertWordToPdf(file) {
                     html2canvas: { 
                         scale: 2, 
                         useCORS: true,
-                        logging: false,
-                        letterRendering: true
+                        letterRendering: true,
+                        scrollY: 0
                     },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
                 };
 
-                html2pdf().from(container).set(opt).outputPdf('blob').then(blob => {
+                // Lancer la capture
+                console.log("Démarrage de la capture PDF...");
+                html2pdf().from(renderDiv).set(opt).toPdf().get('pdf').then(function (pdf) {
+                    console.log("Capture réussie, génération du blob...");
+                    const blob = pdf.output('blob');
+                    
+                    if (blob.size < 1000) {
+                        console.warn("Attention : Le PDF généré semble très petit ou vide.");
+                    }
+                    
                     state.convertedBlob = blob;
                     state.convertedFileName = file.name.replace('.docx', '.pdf');
+                    
+                    // Nettoyage
+                    document.body.removeChild(renderDiv);
+                    
                     showDownload();
                     resolve();
-                }).catch(reject);
+                }).catch(err => {
+                    console.error("Erreur html2pdf :", err);
+                    if (document.getElementById('pdf-render-temp')) {
+                        document.body.removeChild(renderDiv);
+                    }
+                    reject(err);
+                });
             } catch (err) {
                 reject(err);
             }
